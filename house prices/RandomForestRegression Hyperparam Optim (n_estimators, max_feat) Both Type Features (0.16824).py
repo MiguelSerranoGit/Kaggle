@@ -271,13 +271,12 @@ y = train_edited_numeric.SalePrice
 model = RandomForestRegressor(oob_score=True)
 model.fit(X, y)
 print(model.score(X, y))
-y_pred = model.predict(test_edited_numeric[feature_cols])
 
 # Hyperparameter optimization
 # Number of trees
-train_scores = []
-oob_scores = []
+oob_scoresNE = []
 
+# Valores evaluados
 estimator_range = range(1, 150, 5)
 
 for n_estimators in estimator_range:
@@ -285,17 +284,37 @@ for n_estimators in estimator_range:
                                    n_estimators=n_estimators,
                                    )
     modelo.fit(X, y)
-    train_scores.append(modelo.score(X, y))
-    oob_scores.append(modelo.oob_score_)
-print(f"Optimal value of n_estimators: {estimator_range[np.argmax(oob_scores)]}")
+    oob_scoresNE.append(modelo.oob_score_)
+print(f"Valor óptimo de n_estimators: {estimator_range[np.argmax(oob_scoresNE)]}")
 
-model = RandomForestRegressor(n_estimators=estimator_range[np.argmax(oob_scores)])
+# Forest with the new parameter
+model = RandomForestRegressor(n_estimators=estimator_range[np.argmax(oob_scoresNE)])
 model.fit(X, y)
 print(model.score(X, y))
-y_pred = model.predict(test_edited_numeric[feature_cols])
 
-output = pd.DataFrame({'Id': test.Id, 'SalePrice': y_pred})
+# Max Features
+oob_scoresMF = []
+
+max_features_range = range(1, X.shape[1] + 1, 1)
+
+for max_features in max_features_range:
+    modelo = RandomForestRegressor(oob_score=True,
+                                   n_estimators=estimator_range[np.argmax(oob_scoresNE)],
+                                   max_features=max_features,
+                                   )
+    modelo.fit(X, y)
+    oob_scoresMF.append(modelo.oob_score_)
+print(f"Valor óptimo de max_features: {max_features_range[np.argmax(oob_scoresMF)]}")
+
+# Forest with the new parameter
+model = RandomForestRegressor(n_estimators=estimator_range[np.argmax(oob_scoresNE)],
+                              max_features=max_features_range[np.argmax(oob_scoresMF)])
+model.fit(X, y)
+print(model.score(X, y))
+
+predictions = model.predict(test_edited_numeric[feature_cols])
+output = pd.DataFrame({'Id': test.Id, 'SalePrice': predictions})
 output.to_csv('my_submission.csv', index=False)
 print("Your submission was successfully saved!")
 
-# 0.16824
+# 0.16807
